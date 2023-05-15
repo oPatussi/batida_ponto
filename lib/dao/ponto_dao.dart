@@ -1,10 +1,9 @@
-import 'package:atividade1/database/database_provider.dart';
-import 'package:atividade1/model/ponto.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:batida_ponto/database/database_provider.dart';
+import 'package:batida_ponto/model/ponto.dart';
 
 class PontoDao{
-
   final dbProvider = DatabaseProvider.instance;
+  var Desc = '${Ponto.CAMPO_ID} DESC';
 
   Future<bool> salvar(Ponto ponto) async{
     final db = await dbProvider.database;
@@ -22,40 +21,19 @@ class PontoDao{
     }
   }
 
-  Future<bool> remover (int id) async{
-    final db = await dbProvider.database;
-    final registrosAtualizados = await db.delete(
-        Ponto.NAME_TABLE,
-        where: '${Ponto.CAMPO_ID} = ?',
-        whereArgs:[id]);
-    return registrosAtualizados >0;
-  }
 
-  Future<List<Ponto>> listar({
-    String filtro = '',
-    String campoOrdenacao = Ponto.CAMPO_ID,
-    bool usarOrdemDecrescente = false
-  }) async{
-    String? where;
-    if (filtro.isNotEmpty){
-      where = "UPPER(${Ponto.CAMPO_NOME}) LIKE '${filtro.toUpperCase()}%'";
-    }
-    var orderBy = campoOrdenacao;
-    if(usarOrdemDecrescente){
-      orderBy += ' DESC';
-    }
-
+  Future<List<Ponto>> listar() async{
     final db = await dbProvider.database;
     final resultado = await db.query(Ponto.NAME_TABLE,
         columns: [
           Ponto.CAMPO_ID,
-          Ponto.CAMPO_NOME,
-          Ponto.CAMPO_DESCRICAO,
-          Ponto.CAMPO_DIFERENCIAIS,
-          Ponto.CAMPO_DATA_CADASTRO
+          Ponto.CAMPO_HORA_PONTO,
+          Ponto.CAMPO_LATITUDE,
+          Ponto.CAMPO_LONGITUDE,
+          Ponto.CAMPO_VAR,
         ],
-        where: where,
-        orderBy: orderBy);
+          orderBy: Desc
+    );
     return resultado.map((m) => Ponto.fromMap(m)).toList();
   }
 

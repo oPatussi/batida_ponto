@@ -1,6 +1,12 @@
+import 'dart:async';
+
+import 'package:batida_ponto/Pages/detalhes_ponto.dart';
+import 'package:batida_ponto/dao/ponto_dao.dart';
+import 'package:batida_ponto/model/ponto.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,46 +18,163 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Position? _localizacaoAtual;
-  String _batida = 'entrada';
+  String _batida = 'Entrada';
+  final _dateFormat = DateFormat('dd.MMMM.yyyy hh:mm aaa');
+
+  static const ACAO_ABRIR_MAPA = 'abrirMapa';
+  static const ACAO_VISUALIZAR = 'visualizar';
+
+  final _pontos = <Ponto>[];
+  final _dao = PontoDao();
 
 
   @override
   Widget build(BuildContext context) {
+    _update();
     return Scaffold(
       appBar: _criarAppBar(),
       body: _criarBody(),
     );
   }
 
-  AppBar _criarAppBar() {
-    return AppBar(title: const Text('Bater Ponto'));
+  void _update() async{
+    final ponto = await _dao.listar();
+    setState(() {
+      _pontos.clear();
+      if(ponto.isNotEmpty){
+        _pontos.addAll(ponto);
+      }
+    });
   }
 
-  Widget _criarBody() => ListView(children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          child: ElevatedButton(
-            child: Text('Bater Ponto'),
-            onPressed: _baterPonto,
-          ),
-        ),
-      ]
+  AppBar _criarAppBar() {
+    return AppBar(title: const Text('Bater Ponto'),
+        actions: [
+          IconButton(
+            onPressed: _obterLocalizacaoAtual,
+            icon:const Icon(Icons.add_alarm_rounded)),
+          IconButton(
+              onPressed: _update,
+               icon: const Icon(Icons.refresh))
+    ],
+    );
+  }
+
+
+  // Widget _criarBody(){
+  //   return ListView.separated(
+  //     itemCount: _pontos.length,
+  //     itemBuilder: (BuildContext context, int index){
+  //       final ponto = _pontos[index];
+  //       return PopupMenuButton<String>(
+  //           child: ListTile(
+  //             title: Text(
+  //               '${ponto.id}',
+  //             ),
+  //             subtitle: Text('Hora batida: ${ponto.horaPonto}  |  ${_batida}',
+  //             ),
+  //           ),
+  //           itemBuilder: (BuildContext context) => _criarItensMenu(),
+  //           onSelected: (String valorSelecinado){
+  //             if(valorSelecinado == ACAO_ABRIR_MAPA){
+  //               _abrirCoordenadasNoMapaExterno(ponto);
+  //             }else if(valorSelecinado == ACAO_VISUALIZAR){
+  //               _abrirPaginaDetalhesPonto(ponto);
+  //             }
+  //           }
+  //       );
+  //     },
+  //     separatorBuilder: (BuildContext context, int index) => Divider(),
+  //   );
+  // }
+
+  Widget _criarBody() => Padding(
+    padding: EdgeInsets.all(10),
+    child: Column(
+      children: [
+        Expanded(
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _pontos.length,
+              itemBuilder: (BuildContext context, int index){
+                final ponto = _pontos[index];
+                return PopupMenuButton<String>(
+                  child: ListTile(
+                    leading: Text('${ponto.id}'),
+                    title: Text('${ponto.horaPonto} | ${ponto.variavel}'),
+                    subtitle: Text('Lat: ${ponto.latitude} '
+                        'Long: ${ponto.longitude}'),
+                  ),
+                  itemBuilder: (_) => _criarItensMenu(),
+                  onSelected: (String valorSelecionado) {
+                    if (valorSelecionado == ACAO_VISUALIZAR) {
+                      _abrirPaginaDetalhesPonto(ponto);
+                    }else if (valorSelecionado == ACAO_ABRIR_MAPA) {
+                      _abrirCoordenadasNoMapaExterno(ponto);
+                    }
+                  },
+                );
+              },
+              separatorBuilder: (_, __) => Divider(),
+            )
+        )
+      ],
+    ),
   );
 
-  void _baterPonto() async{
-    _obterLocalizacaoAtual();
-    DateTime horaBatida = DateTime.now();
-
-    flipPonto();
+  List<PopupMenuEntry<String>> _criarItensMenu(){
+    return[
+      PopupMenuItem(
+        value: ACAO_ABRIR_MAPA,
+        child: Row(
+          children: [
+            Icon(Icons.map, color: Colors.lightBlue),
+            Padding(
+              padding: EdgeInsets.only(left: 10),
+              child: Text('Abrir no mapa externo'),
+            )
+          ],
+        ),
+      ),PopupMenuItem(
+        value: ACAO_VISUALIZAR,
+        child: Row(
+          children: [
+            Icon(Icons.launch, color: Colors.black),
+            Padding(
+              padding: EdgeInsets.only(left: 10),
+              child: Text('Visualizar ponto'),
+            )
+          ],
+        ),
+      ),
+    ];
   }
 
-  void flipPonto(){
-    if (_batida == 'entrada'){
-      _batida = 'saida';
-    }else{
-      _batida = 'entrada';
-    }
 
+
+  // void _baterPonto() async{
+  //   _obterLocalizacaoAtual();
+  //   DateTime horaBatida = DateTime.now();
+  //
+  //  DUVIDA !!!!!
+  // }
+
+  void flipPonto(){
+    if (_batida == 'Entrada'){
+      _batida = 'Saida';
+    }else{
+      _batida = 'Entrada';
+    }
+  }
+
+  void _abrirPaginaDetalhesPonto(Ponto ponto) {
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => DetalhesPontoPage(
+              ponto: ponto,
+            )
+        ));
   }
 
   void _obterLocalizacaoAtual() async {
@@ -66,19 +189,28 @@ class _HomePageState extends State<HomePage> {
     _localizacaoAtual = await Geolocator.getCurrentPosition();
     setState(() {
     });
+    Ponto ponto = Ponto(id:0);
+    ponto.horaPonto = _dateFormat.format(DateTime.now());
+    ponto.longitude = _localizacaoAtual?.longitude == null ? '${_localizacaoAtual?.longitude}': '${_localizacaoAtual?.longitude}';
+    ponto.latitude = _localizacaoAtual?.latitude == null ? '${_localizacaoAtual?.latitude}': '${_localizacaoAtual?.latitude}';
+    ponto.variavel = _batida;
+    _dao.salvar(ponto);
+
+    _update();
+    flipPonto();
   }
 
-  void _abrirCoordenadasNoMapaExterno(){
+  void _abrirCoordenadasNoMapaExterno(ponto){
     if(_localizacaoAtual == null){
       return;
     }
-    MapsLauncher.launchCoordinates(_localizacaoAtual!.latitude, _localizacaoAtual!.longitude);
+    MapsLauncher.launchCoordinates(ponto.latitude, ponto.longitude);
   }
 
 
   Future<bool> _servicoHabilitado() async {
-    bool servicoHabilotado = await Geolocator.isLocationServiceEnabled();
-    if(!servicoHabilotado){
+    bool servicoHabilitado = await Geolocator.isLocationServiceEnabled();
+    if(!servicoHabilitado){
       await _mostrarMensagemDialog('Para utilizar esse recurso, você deverá habilitar o serviço de localização '
           'no dispositivo');
       Geolocator.openLocationSettings();
@@ -125,5 +257,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 
 }
