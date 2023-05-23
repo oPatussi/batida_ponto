@@ -36,7 +36,7 @@ class _DetalhesPontoPageState extends State<DetalhesPontoPage> {
           ),
           Row(
             children: [
-              Campo(descricao: 'Hora de entrada: '),
+              Campo(descricao: 'Hora da ${widget.ponto.variavel}: '),
               Valor(valor: '${widget.ponto.horaPonto}')
             ],
           ),

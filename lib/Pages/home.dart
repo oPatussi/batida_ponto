@@ -204,7 +204,9 @@ class _HomePageState extends State<HomePage> {
     if(_localizacaoAtual == null){
       return;
     }
-    MapsLauncher.launchCoordinates(ponto.latitude, ponto.longitude);
+    var lat = double.parse(ponto.latitude);
+    var lon = double.parse(ponto.longitude);
+    MapsLauncher.launchCoordinates(lat,lon);
   }
 
 
